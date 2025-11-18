@@ -2,7 +2,7 @@
 
 ## Test Results ✅
 
-The `autotask-mcp` package (v1.0.2) has been verified working correctly:
+The `autotask-mcp` package (v1.0.3) has been verified working correctly:
 
 - ✅ Package published to npm successfully
 - ✅ STDOUT contains only clean JSON-RPC messages
@@ -122,6 +122,13 @@ npx --version
 ### Issue: "Invalid credentials" or "401 Unauthorized"
 **Solution**: Verify credentials are exactly as shown in the config, with no extra spaces or quotes.
 
+### Issue: Server hangs or "spinning result" with no response
+**Solution**: This was fixed in v1.0.3 with non-blocking cache initialization and rate limiting protection. Clear npx cache and use latest version:
+```bash
+npx clear-npx-cache
+npx autotask-mcp@latest --version
+```
+
 ### Issue: "Zod validation errors" or malformed JSON
 **Solution**: This was fixed in v1.0.2. Make sure you're using the latest version:
 ```bash
@@ -130,7 +137,7 @@ npx autotask-mcp@latest --version
 
 ## Version Information
 
-- **Current Published Version**: 1.0.2
+- **Current Published Version**: 1.0.3 (includes critical rate limiting and hanging fixes)
 - **Minimum Node.js**: 18.0.0
 - **Package**: https://www.npmjs.com/package/autotask-mcp
 - **GitHub**: https://github.com/jwaldrip/autotask-mcp
