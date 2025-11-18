@@ -24,11 +24,13 @@ export interface MappingResult {
 export class MappingService {
   private static instance: MappingService | null = null;
   private static isInitializing: boolean = false;
-  
+
   private cache: MappingCache;
   private autotaskService: AutotaskService;
   private logger: Logger;
   private cacheExpiryMs: number;
+  private isRefreshingCompanies: boolean = false;
+  private isRefreshingResources: boolean = false;
 
   private constructor(autotaskService: AutotaskService, logger: Logger, cacheExpiryMs: number = 30 * 60 * 1000) { // 30 minutes default
     this.autotaskService = autotaskService;
@@ -53,7 +55,7 @@ export class MappingService {
     }
 
     if (MappingService.isInitializing) {
-      // Wait for initialization to complete
+      // Wait for instance creation (but not cache initialization)
       return new Promise((resolve) => {
         const checkInit = () => {
           if (MappingService.instance) {
@@ -68,16 +70,14 @@ export class MappingService {
 
     MappingService.isInitializing = true;
     MappingService.instance = new MappingService(autotaskService, logger);
-    
-    try {
-      await MappingService.instance.initializeCache();
-    } catch (error) {
-      MappingService.instance = null;
-      MappingService.isInitializing = false;
-      throw error;
-    }
-    
     MappingService.isInitializing = false;
+
+    // Initialize cache in background - don't block on it
+    // This prevents hanging on first request while cache loads
+    MappingService.instance.initializeCache().catch(error => {
+      logger.error('Background cache initialization failed:', error);
+    });
+
     return MappingService.instance;
   }
 
@@ -141,27 +141,18 @@ export class MappingService {
   public async getCompanyName(companyId: number): Promise<string | null> {
     try {
       await this.refreshCacheIfNeeded();
-      
+
       // Try cache first
       const cachedName = this.cache.companies.get(companyId);
       if (cachedName) {
         return cachedName;
       }
-      
-      // Fallback to direct API lookup
-      this.logger.debug(`Company ${companyId} not in cache, doing direct lookup`);
-      const companies = await this.autotaskService.searchCompanies({ 
-        // No searchTerm needed - we'll find by ID after getting results
-        pageSize: 0 // Get all companies to find this specific one
-      });
-      
-      const company = companies.find((c: any) => c.id === companyId);
-      if (company && company.companyName) {
-        // Add to cache for future use
-        this.cache.companies.set(companyId, company.companyName);
-        return company.companyName;
-      }
-      
+
+      // Skip fallback lookups entirely to prevent rate limiting
+      // Users can call get_company_name tool directly if they need uncached lookups
+      this.logger.debug(`Company ${companyId} not in cache, returning null (fallback disabled to prevent rate limiting)`);
+
+
       return null;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -234,20 +225,29 @@ export class MappingService {
    * Refresh the company cache
    */
   private async refreshCompanyCache(): Promise<void> {
+    // Prevent concurrent refreshes
+    if (this.isRefreshingCompanies) {
+      this.logger.debug('Company cache refresh already in progress, skipping');
+      return;
+    }
+
     if (this.isCacheValid('companies')) {
       return; // Cache is still valid
     }
 
+    this.isRefreshingCompanies = true;
+
     try {
       this.logger.info('Refreshing company cache...');
-      
-      // Use pagination-by-default to get ALL companies for complete accuracy
+
+      // Fetch a reasonable initial set (2000 most recent companies)
+      // This balances performance with coverage. Fallback lookup handles edge cases.
       const companies = await this.autotaskService.searchCompanies({
-        // No pageSize specified - gets ALL companies via pagination by default
+        pageSize: 2000
       });
 
       this.cache.companies.clear();
-      
+
       for (const company of companies) {
         if (company.id && company.companyName) {
           this.cache.companies.set(company.id, company.companyName);
@@ -255,11 +255,13 @@ export class MappingService {
       }
 
       this.cache.lastUpdated.companies = new Date();
-      this.logger.info(`Company cache refreshed with ${this.cache.companies.size} entries (COMPLETE dataset)`);
+      this.logger.info(`Company cache refreshed with ${this.cache.companies.size} entries`);
 
     } catch (error) {
       this.logger.error('Failed to refresh company cache:', error);
       // Don't throw error - allow fallback to direct lookup
+    } finally {
+      this.isRefreshingCompanies = false;
     }
   }
 
@@ -267,13 +269,21 @@ export class MappingService {
    * Refresh resource cache safely (handle endpoint limitations)
    */
   private async refreshResourceCache(): Promise<void> {
+    // Prevent concurrent refreshes
+    if (this.isRefreshingResources) {
+      this.logger.debug('Resource cache refresh already in progress, skipping');
+      return;
+    }
+
+    this.isRefreshingResources = true;
+
     try {
       this.logger.debug('Refreshing resource cache...');
-      
+
       // Note: Some Autotask instances don't support resource listing via REST API
       // This is a known limitation - see Autotask documentation
       const resources = await this.autotaskService.searchResources({ pageSize: 0 });
-      
+
       this.cache.resources.clear();
       for (const resource of resources) {
         if (resource.id && resource.firstName && resource.lastName) {
@@ -281,10 +291,10 @@ export class MappingService {
           this.cache.resources.set(resource.id, fullName);
         }
       }
-      
+
       this.cache.lastUpdated.resources = new Date();
       this.logger.info(`Resource cache refreshed: ${this.cache.resources.size} resources`);
-      
+
     } catch (error) {
       // Handle the common case where Resources endpoint returns 405 Method Not Allowed
       if ((error as any)?.response?.status === 405) {
@@ -292,10 +302,12 @@ export class MappingService {
         this.cache.lastUpdated.resources = new Date(); // Mark as "refreshed" to prevent retry loops
         return;
       }
-      
+
       // Handle other resource endpoint errors gracefully
       this.logger.error('Failed to refresh resource cache, continuing without resource names:', error);
       this.cache.lastUpdated.resources = new Date(); // Mark as "refreshed" to prevent retry loops
+    } finally {
+      this.isRefreshingResources = false;
     }
   }
 

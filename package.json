@@ -1,6 +1,6 @@
 {
   "name": "autotask-mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP (Model Context Protocol) server for Kaseya Autotask PSA integration",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -55,8 +55,7 @@
   },
   "homepage": "https://github.com/jwaldrip/autotask-mcp#readme",
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",

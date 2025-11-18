@@ -90,11 +90,20 @@ export class EnhancedAutotaskToolHandler extends AutotaskToolHandler {
         return baseResult;
       }
 
+      // Limit enhancement to prevent API rate limiting
+      // Only enhance the first 10 items to avoid overwhelming the API
+      const MAX_ENHANCE_ITEMS = 10;
+      const itemsLimited = itemsToEnhance.slice(0, MAX_ENHANCE_ITEMS);
+
+      if (itemsToEnhance.length > MAX_ENHANCE_ITEMS) {
+        this.logger.info(`Limiting enhancement to first ${MAX_ENHANCE_ITEMS} of ${itemsToEnhance.length} items to prevent rate limiting`);
+      }
+
       const mappingService = await this.getMappingService();
-      
+
       // Enhanced items with name mapping (resilient to partial failures)
       const enhancedItems = await Promise.allSettled(
-        itemsToEnhance.map(async (item) => {
+        itemsLimited.map(async (item) => {
           const enhanced: EnhancedData = {};
           
           // Try to map company ID to name
@@ -127,24 +136,30 @@ export class EnhancedAutotaskToolHandler extends AutotaskToolHandler {
       const successfulEnhancements = enhancedItems
         .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')
         .map(result => result.value);
-      
+
       // Log any mapping failures for debugging
       const failures = enhancedItems.filter(result => result.status === 'rejected');
       if (failures.length > 0) {
         this.logger.debug(`${failures.length} items had mapping failures but processing continued`);
       }
-      
+
+      // Combine enhanced items with non-enhanced items
+      const allItems = [
+        ...successfulEnhancements,
+        ...itemsToEnhance.slice(MAX_ENHANCE_ITEMS) // Add non-enhanced items
+      ];
+
       // Reconstruct response maintaining the base tool handler format
       let enhancedData;
       if (Array.isArray(parsedContent.data)) {
-        enhancedData = successfulEnhancements;
+        enhancedData = allItems;
       } else if (parsedContent.data && parsedContent.data.items) {
         enhancedData = {
           ...parsedContent.data,
-          items: successfulEnhancements
+          items: allItems
         };
       } else if (parsedContent.data) {
-        enhancedData = successfulEnhancements[0] || parsedContent.data;
+        enhancedData = allItems[0] || parsedContent.data;
       } else {
         // Fallback for non-standard formats
         if (Array.isArray(parsedContent)) {
