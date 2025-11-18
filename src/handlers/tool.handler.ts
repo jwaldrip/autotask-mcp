@@ -1065,13 +1065,14 @@ export class AutotaskToolHandler {
       let message: string;
 
       switch (name) {
-        case 'test_connection':
+        case 'test_connection': {
           const connectionResult = await this.autotaskService.testConnection();
           result = { success: connectionResult };
           message = connectionResult
             ? 'Successfully connected to Autotask API'
             : 'Connection failed: Unable to connect to Autotask API';
           break;
+        }
 
         case 'search_companies':
           result = await this.autotaskService.searchCompanies(args);
@@ -1098,7 +1099,7 @@ export class AutotaskToolHandler {
           message = `Successfully created contact with ID: ${result}`;
           break;
 
-        case 'search_tickets':
+        case 'search_tickets': {
           // Map parameter names from tool schema to service expectations
           const { companyID, ...otherArgs } = args;
           const ticketSearchOptions = {
@@ -1108,6 +1109,7 @@ export class AutotaskToolHandler {
           result = await this.autotaskService.searchTickets(ticketSearchOptions);
           message = `Found ${result.length} tickets`;
           break;
+        }
 
         case 'get_ticket_details':
           result = await this.autotaskService.getTicket(args.ticketID, args.fullDetails);
@@ -1296,175 +1298,6 @@ export class AutotaskToolHandler {
           });
           message = `Successfully created quote with ID: ${result}`;
           break;
-
-        // Configuration Item tools
-        case 'search_configuration_items':
-          result = await this.autotaskService.searchConfigurationItems(args);
-          message = `Found ${result.length} configuration items`;
-          break;
-
-        // Contract tools
-        case 'search_contracts':
-          result = await this.autotaskService.searchContracts(args);
-          message = `Found ${result.length} contracts`;
-          break;
-
-        // Invoice tools
-        case 'search_invoices':
-          result = await this.autotaskService.searchInvoices(args);
-          message = `Found ${result.length} invoices`;
-          break;
-
-        // Task tools
-        case 'search_tasks':
-          result = await this.autotaskService.searchTasks(args);
-          message = `Found ${result.length} tasks`;
-          break;
-
-        case 'create_task':
-          result = await this.autotaskService.createTask(args);
-          message = `Successfully created task with ID: ${result}`;
-          break;
-
-        // Ticket Notes tools
-        case 'get_ticket_note':
-          result = await this.autotaskService.getTicketNote(args.ticketId, args.noteId);
-          message = `Ticket note retrieved successfully`;
-          break;
-
-        case 'search_ticket_notes':
-          result = await this.autotaskService.searchTicketNotes(args.ticketId, { pageSize: args.pageSize });
-          message = `Found ${result.length} ticket notes`;
-          break;
-
-        case 'create_ticket_note':
-          result = await this.autotaskService.createTicketNote(args.ticketId, {
-            title: args.title,
-            description: args.description,
-            noteType: args.noteType,
-            publish: args.publish
-          });
-          message = `Successfully created ticket note with ID: ${result}`;
-          break;
-
-        // Project Notes tools  
-        case 'get_project_note':
-          result = await this.autotaskService.getProjectNote(args.projectId, args.noteId);
-          message = `Project note retrieved successfully`;
-          break;
-
-        case 'search_project_notes':
-          result = await this.autotaskService.searchProjectNotes(args.projectId, { pageSize: args.pageSize });
-          message = `Found ${result.length} project notes`;
-          break;
-
-        case 'create_project_note':
-          result = await this.autotaskService.createProjectNote(args.projectId, {
-            title: args.title,
-            description: args.description,
-            noteType: args.noteType
-          });
-          message = `Successfully created project note with ID: ${result}`;
-          break;
-
-        // Company Notes tools
-        case 'get_company_note':
-          result = await this.autotaskService.getCompanyNote(args.companyId, args.noteId);
-          message = `Company note retrieved successfully`;
-          break;
-
-        case 'search_company_notes':
-          result = await this.autotaskService.searchCompanyNotes(args.companyId, { pageSize: args.pageSize });
-          message = `Found ${result.length} company notes`;
-          break;
-
-        case 'create_company_note':
-          result = await this.autotaskService.createCompanyNote(args.companyId, {
-            title: args.title,
-            description: args.description,
-            actionType: args.actionType
-          });
-          message = `Successfully created company note with ID: ${result}`;
-          break;
-
-        // Ticket Attachments tools
-        case 'get_ticket_attachment':
-          result = await this.autotaskService.getTicketAttachment(args.ticketId, args.attachmentId, args.includeData);
-          message = `Ticket attachment retrieved successfully`;
-          break;
-
-        case 'search_ticket_attachments':
-          result = await this.autotaskService.searchTicketAttachments(args.ticketId, { pageSize: args.pageSize });
-          message = `Found ${result.length} ticket attachments`;
-          break;
-
-        // Expense Reports tools
-        case 'get_expense_report':
-          result = await this.autotaskService.getExpenseReport(args.reportId);
-          message = `Expense report retrieved successfully`;
-          break;
-
-        case 'search_expense_reports':
-          result = await this.autotaskService.searchExpenseReports({
-            submitterId: args.submitterId,
-            status: args.status,
-            pageSize: args.pageSize
-          });
-          message = `Found ${result.length} expense reports`;
-          break;
-
-        case 'create_expense_report':
-          result = await this.autotaskService.createExpenseReport({
-            name: args.name,
-            description: args.description,
-            submitterID: args.submitterId,
-            weekEndingDate: args.weekEndingDate
-          });
-          message = `Successfully created expense report with ID: ${result}`;
-          break;
-
-        // Expense Items tools - Not directly supported
-        case 'get_expense_item':
-        case 'search_expense_items':
-        case 'create_expense_item':
-          throw new Error('Expense items API not yet implemented - requires child entity handling');
-
-        // Quotes tools
-        case 'get_quote':
-          result = await this.autotaskService.getQuote(args.quoteId);
-          message = `Quote retrieved successfully`;
-          break;
-
-        case 'search_quotes':
-          result = await this.autotaskService.searchQuotes({
-            companyId: args.companyId,
-            contactId: args.contactId,
-            opportunityId: args.opportunityId,
-            searchTerm: args.searchTerm,
-            pageSize: args.pageSize
-          });
-          message = `Found ${result.length} quotes`;
-          break;
-
-        case 'create_quote':
-          result = await this.autotaskService.createQuote({
-            name: args.name,
-            description: args.description,
-            companyID: args.companyId,
-            contactID: args.contactId,
-            opportunityID: args.opportunityId,
-            effectiveDate: args.effectiveDate,
-            expirationDate: args.expirationDate
-          });
-          message = `Successfully created quote with ID: ${result}`;
-          break;
-
-        // Billing Codes and Departments tools - Not directly supported
-        case 'get_billing_code':
-        case 'search_billing_codes':
-        case 'get_department':
-        case 'search_departments':
-          throw new Error('This entity type is not directly available in the autotask-node library');
 
         default:
           throw new Error(`Unknown tool: ${name}`);

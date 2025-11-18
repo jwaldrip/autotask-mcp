@@ -684,6 +684,10 @@ LOG_LEVEL=debug npm start
 - Update documentation for API changes
 - Add tests for new features
 
+## Publishing
+
+For maintainers: See [PUBLISHING.md](PUBLISHING.md) for detailed instructions on publishing new versions to npm.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
