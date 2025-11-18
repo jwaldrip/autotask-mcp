@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2025-11-18
+
 ### Fixed
+- **🚨 CRITICAL SERVER HANG FIX**: Server now responds immediately without blocking on cache initialization
+  - **Root Cause**: MappingService blocked on cache initialization, causing indefinite hangs and rate limiting
+  - **Solution**: Non-blocking cache initialization - server responds immediately while cache loads in background
+  - **Impact**: Fixes "spinning result" hang and API rate limit errors reported by users
+  - **Concurrency Protection**: Added locks to prevent parallel cache refreshes that were causing hundreds of simultaneous API calls
+- **CRITICAL RATE LIMITING PROTECTION**: Limited enhancement to 10 items max to prevent API abuse
+  - **Root Cause**: Enhancement was trying to map ALL 500 results instead of requested 5, causing excessive API calls
+  - **Solution**: Limit enhancement to first 10 items only, disable fallback lookups
+  - **Impact**: Prevents rate limiting errors and reduces API load by 98%
 - **🚨 CRITICAL DATA ACCURACY FIX**: Implemented pagination-by-default to eliminate massive ticket undercounts
   - **Root Cause**: Default page size was limited to 25-50 tickets, causing severe data accuracy issues
   - **Solution**: All search tools now paginate through ALL results by default for complete datasets
