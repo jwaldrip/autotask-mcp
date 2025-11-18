@@ -75,6 +75,8 @@ jobs:
         run: npm run build
 
       - name: Publish to npm
+        env:
+          NPM_CONFIG_PROVENANCE: true
         run: npm publish --provenance --access public
 
   docker:

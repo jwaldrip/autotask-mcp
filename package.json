@@ -55,7 +55,8 @@
   },
   "homepage": "https://github.com/jwaldrip/autotask-mcp#readme",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.2",
